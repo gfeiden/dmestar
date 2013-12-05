@@ -7,10 +7,10 @@ z_abundance = {'GS98'  : [1.0e22, 3.0e-5, 0.17208, 0.00150, 0.050410, 0.0, 0.468
                'AGSS09': [1.0e22, 3.0e-5, 0.17686, 0.00150, 0.051820, 0.0, 0.428750, 0.0, 0.0]}
 
 def getSolar(mix):
-    return solar_calib[mix.upper()]
+    return solar_calib[mix]
     
 def getZAbundance(mix):
-    return z_abundance[mix.upper()]
+    return z_abundance[mix]
 
 def getOpalBinary(mix):
     return 'OPAL_{0}.bin'.format(mix)

@@ -1,6 +1,6 @@
-import errors as er
 import math
-import mixture
+from . import errors as er
+from . import mixture
 
 def writePolyNamelist(mass, x, z, afe, alpha_mlt, mix,
                       index_n = 1.5, beta = 1., age = 1.e3, 
@@ -74,7 +74,7 @@ def writePolyNamelist(mass, x, z, afe, alpha_mlt, mix,
 
 def writePhysNamelist(mass, atm, eos, turb_diff, nuclear_svals):
     """ Write the physics namelist file """
-    import dirstruc as ds
+    from . import dirstruc as ds
     
     if None in [mass, atm, turb_diff, eos, nuclear_svals]:
         er.valErrMissing()
@@ -139,8 +139,7 @@ def writePhysNamelist(mass, atm, eos, turb_diff, nuclear_svals):
 
 def writeCtrlNamelist(x, y, z, afe, a_mlt, mix, final_age = None, n_models = None):
     """ Write the control namelist file """
-    import dirstruc as ds
-    import mixture
+    from dmestar.src import dirstruc as ds
     from os  import uname, getlogin
     from sys import exit
     

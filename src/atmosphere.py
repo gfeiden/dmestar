@@ -10,9 +10,9 @@ def plusMinus(value):
 
 def select(feh, afe, atm_tau = 10):
     """ Select appropriate atmosphere files """
-    import dirstruc as ds
     import os
     from sys import exit
+    from . import dirstruc as ds
     
     fort_files = ['fort.{:.0f}'.format(x) for x in range(95, 100)]
     if (feh < -1.0 or feh > 0.5):

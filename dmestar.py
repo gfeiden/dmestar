@@ -1,7 +1,7 @@
 #
 #
 import os
-import writenml as wn
+from .src import writenml as wn
 
 
 class Model(object):
@@ -14,28 +14,24 @@ class Model(object):
                  b_gamma = 2.0, chi_f = '1.0', fc_tach = 0.15, 
                  eq_lambda = 0.0, b_rad_prof = 'dipole', dynamo = 'rot', 
                  b_field_ramp = 'no', run_log = True):
-        """ Creates a new instance of DMESTAR
+        """ Create a new instance of DMESTAR
     
         The base class for initializing a stellar model using DMESTAR. The
         input properties for each instance of DMESTAR will be used to as
         the input configuration for a given series of stellar models.
         
-        Required input variables:
-            
-            mass_init    ::    starting mass (in solar units)
-            
-            mass_final   ::    final mass (in solar units)
-            
+        Required Input:
+        ---------------
+            mass         ::    final mass (in solar units)
+
             feh          ::    scaled-solar [Fe/H] 
             
-        Optional input variables (default):
-        
+        Optional Input: (default)
+        ---------------
             delta_mass   ::    float equal to the requested step size in
                                mass for a series of models. (0.2)
-            
             x            ::    hydrogen mass fraction or an automatic 
                                computation based on Y and Z. ('calc')
-                                           
             y            ::    helium mass fraction or the method of an
                                automatic linear scaling with Z. ('calc')
                                
@@ -127,6 +123,13 @@ class Model(object):
                                time. ('no')
                                options --- 'yes'
                                            'no'
+
+           Returns:
+           --------
+           A model object that can be used to generate a new DMESTAR run.
+
+           Raises:
+           -------
         """
         self.mass       = float(mass)
         
@@ -143,7 +146,7 @@ class Model(object):
         
         # convective mixing length
         if a_mlt == 'solar':
-            import mixture
+            from dmestar.src import mixture
             solar = mixture.solar_calib[self.mix]
             self.a_mlt  = solar[3]
         else:
@@ -173,9 +176,9 @@ class Model(object):
         self.b_field_ramp  = str(b_field_ramp)
      
     def evolve(self):
-        """ Start the actual model series """
+        """ Evolve an actual DMESTAR model """
         import subprocess as sp
-        import dirstruc   as ds
+        from .src import dirstruc as ds
         sp.call('{0}'.format(ds.mach + 'newpoly'))
         sp.call('{0}'.format(ds.binary + 'dmestar'))
         self.cleanup()
@@ -194,7 +197,7 @@ class Model(object):
         
     def scratch(self):
         """ Construct a scratch directory using username and 8 digits """
-        import dirstruc as ds
+        from .src import dirstruc as ds
         import random
         
         user = os.getlogin()
@@ -209,7 +212,7 @@ class Model(object):
         
     def linkInputData(self):
         """ Redirect input files to Fortran unit files """
-        import dirstruc as ds
+        from .src import dirstruc as ds
         
         # check if old files exist
         try:
@@ -252,7 +255,7 @@ class Model(object):
     
     def linkOutputData(self):
         """ Redirect output to permanent files """
-        from atmosphere import plusMinus as pM
+        from .src.atmosphere import plusMinus as pM
         
         # create output file name
         fout = 'm{:04.0f}_{:s}_{:s}{:03.0f}_{:s}{:01.0f}_mlt{:4.3f}'.format(
@@ -317,18 +320,18 @@ class Model(object):
         
     def setAtmosphere(self):
         """ Select correct atmosphere files """
-        import atmosphere
-        self.kur_f, self.phx_f = atmosphere.select(self.feh, self.afe)
+        from .src import atmosphere as atm
+        self.kur_f, self.phx_f = atm.select(self.feh, self.afe)
     
     def setAbundances(self):
-        import mixture
+        from .src import mixture
         self.x, self.y, self.z = mixture.setAbundances(self.x, self.y, self.z, 
                                                        self.mix, self.feh, 
                                                        self.afe, self.y_prim)
     
     def cleanup(self):
         """ Clean up after model run """
-        import dirstruc as ds  
+        from .src import dirstruc as ds  
         try:
             os.system('mv {0}/{1}.* {2}/'.format(os.getcwd(), self.fout, ds.outdir))
         except:

@@ -1,5 +1,4 @@
 #
 #
-from . import *
 
-__all__ = ['dmestar', 'atmosphere', 'dirstruc', 'errors', 'mixture', 'writenml']
+__all__ = ['atmosphere', 'mixture', 'writenml', 'dirstruc', 'errors']
