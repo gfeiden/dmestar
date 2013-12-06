@@ -2,6 +2,10 @@
 #
 import os
 from .src import writenml as wn
+from .src import atmosphere as atm
+from .src import dirstruc as ds
+
+__all__ = ['Model']
 
 
 class Model(object):
@@ -146,7 +150,7 @@ class Model(object):
         
         # convective mixing length
         if a_mlt == 'solar':
-            from dmestar.src import mixture
+            from .src import mixture
             solar = mixture.solar_calib[self.mix]
             self.a_mlt  = solar[3]
         else:
@@ -176,11 +180,34 @@ class Model(object):
         self.b_field_ramp  = str(b_field_ramp)
      
     def evolve(self):
-        """ Evolve an actual DMESTAR model """
+        """ Evolve an actual DMESTAR model 
+            
+            This routine creates a new polytrope seed model and then begins
+            a new evolution model using DMESTAR. All model input files should
+            have been linked and created before this routine is called. The
+            only items returned will be error codes from the subprocess commands
+            addressing OS issues with the shell commands.
+
+            Required Arguments:
+            -------------------
+            None
+
+
+            Optional Arguments:
+            -------------------
+            None
+
+
+            Returns:
+            --------
+            None
+            
+        """
         import subprocess as sp
-        from .src import dirstruc as ds
         sp.call('{0}'.format(ds.mach + 'newpoly'))
-        sp.call('{0}'.format(ds.binary + 'dmestar'))
+        #sp.call('{0}'.format(ds.binary + 'dmestar'))
+        new_model = sp.Popen('{0}'.format(ds.binary + 'dmestar'))
+        new_model.wait()
         self.cleanup()
         
     def construct(self):
@@ -197,7 +224,6 @@ class Model(object):
         
     def scratch(self):
         """ Construct a scratch directory using username and 8 digits """
-        from .src import dirstruc as ds
         import random
         
         user = os.getlogin()
@@ -212,8 +238,6 @@ class Model(object):
         
     def linkInputData(self):
         """ Redirect input files to Fortran unit files """
-        from .src import dirstruc as ds
-        
         # check if old files exist
         try:
             os.remove('./fort.15')
@@ -255,12 +279,10 @@ class Model(object):
     
     def linkOutputData(self):
         """ Redirect output to permanent files """
-        from .src.atmosphere import plusMinus as pM
-        
         # create output file name
         fout = 'm{:04.0f}_{:s}_{:s}{:03.0f}_{:s}{:01.0f}_mlt{:4.3f}'.format(
-                self.mass*1000., self.mix, pM(self.feh), abs(self.feh)*100.,
-                pM(self.afe), abs(self.afe)*10., self.a_mlt)
+                self.mass*1000., self.mix, atm.plusMinus(self.feh), abs(self.feh)*100.,
+                atm.plusMinus(self.afe), abs(self.afe)*10., self.a_mlt)
         if self.b_field == 'on':
             fout += 'mag{:02.0f}kG'.format(self.b_surf/100.)
         
@@ -320,7 +342,6 @@ class Model(object):
         
     def setAtmosphere(self):
         """ Select correct atmosphere files """
-        from .src import atmosphere as atm
         self.kur_f, self.phx_f = atm.select(self.feh, self.afe)
     
     def setAbundances(self):
@@ -331,7 +352,6 @@ class Model(object):
     
     def cleanup(self):
         """ Clean up after model run """
-        from .src import dirstruc as ds  
         try:
             os.system('mv {0}/{1}.* {2}/'.format(os.getcwd(), self.fout, ds.outdir))
         except:

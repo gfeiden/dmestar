@@ -1,8 +1,6 @@
 #
 #
-from .dmestar import *
-
-__all__ = ['examples', 'src']
+from .model import *
 
 __author__     = 'Gregory A. Feiden'
 __copyright__  = 'Copyright 2013'
