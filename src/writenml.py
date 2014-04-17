@@ -22,7 +22,7 @@ def writePolyNamelist(mass, x, z, afe, alpha_mlt, mix,
     
     if mass >= 3.9:
         teff       =  3.64
-        luminoisty =  0.2*(mass - 5.0) + 2.6
+        luminosity =  0.2*(mass - 5.0) + 2.6
     elif 3.0 <= mass < 3.9:
         teff       = -0.028*mass + 3.785
         luminosity =  0.55*mass + 0.1
@@ -40,9 +40,13 @@ def writePolyNamelist(mass, x, z, afe, alpha_mlt, mix,
     luminosity += adjust_lumi
     
     # get heavy element abundances
-    z_elements = mixture.getZAbundance(mix)
-    z_elements.pop(0)
-        
+    if afe != 0.0:
+    	afe_ext = 'a{:1.0f}'.format(afe*10.)
+    else:
+    	afe_ext = ''
+    z_elements = mixture.getZAbundance(mix + afe_ext)
+    #z_elements.pop(0)
+    
     # write out namelist file
     poly_nml = open('poly.nml', 'w')
     poly_nml.write('! Auto-generated polytrope namelist file \n')
@@ -53,9 +57,9 @@ def writePolyNamelist(mass, x, z, afe, alpha_mlt, mix,
     poly_nml.write(' suluml = {:.4f} \n'.format(luminosity))
     poly_nml.write(' x = {:.6e} \n'.format(x))
     poly_nml.write(' z = {:.6e} \n'.format(z))
-    poly_nml.write(' elem(1) = {:e} \n'.format(z_elements.pop(0)))
-    for i in range(len(z_elements)):
-        poly_nml.write(' elem({:.0f}) = {:e} \n'.format(i + 2, z*z_elements[i]))
+    poly_nml.write(' elem(1) = {:e} \n'.format(z_elements[0]))
+    for i in range(1, len(z_elements), 1):
+        poly_nml.write(' elem({:.0f}) = {:e} \n'.format(i + 1, z*z_elements[i]))
     poly_nml.write(' cmixl = {:.6f} \n'.format(alpha_mlt))
     poly_nml.write(' beta = {:.3f} \n'.format(beta))
     poly_nml.write(' fmass1 = {:e} \n'.format(mass_deep))
@@ -72,7 +76,7 @@ def writePolyNamelist(mass, x, z, afe, alpha_mlt, mix,
     if not poly_nml.closed:
         print "\nWARNING: Polytrope namelist file not closed properly.\n"
 
-def writePhysNamelist(mass, atm, eos, turb_diff, nuclear_svals):
+def writePhysNamelist(mass, atm, tau, eos, turb_diff, nuclear_svals):
     """ Write the physics namelist file """
     from . import dirstruc as ds
     
@@ -95,7 +99,10 @@ def writePhysNamelist(mass, atm, eos, turb_diff, nuclear_svals):
     phys_nml.write('!-------------------------------------\n')
     phys_nml.write('$physics\n\n')
     phys_nml.write(' kttau = {:1.0f}\n'.format(atm_int[atm]))
-    phys_nml.write(' lmatm = .true.\n')
+    if mass > 1.8 or tau == 0:
+        phys_nml.write(' lmatm = .false.\n')
+    else:
+        phys_nml.write(' lmatm = .true.\n')
     if turb_diff > 0.0:
         phys_nml.write(' ltdiff = .true.\n')
         phys_nml.write(' turbt = {:2.1f}\n'.format(turb_diff))
@@ -146,8 +153,8 @@ def writeCtrlNamelist(x, y, z, afe, a_mlt, mix, final_age = None, n_models = Non
     if (final_age == None and n_models == None):
         exit('\nERROR: Must specify either the number of models or a final age\n')
         
-    opalbin = ds.opal + mixture.getOpalBinary(mix)
-    fergbin = mixture.getFerg05Data(mix)
+    opalbin = ds.opal + mixture.getOpalBinary(mix, afe)
+    fergbin = mixture.getFerg05Data(mix, afe)
     
     diagnostic = uname()
     descrip2 = '"User: {0}, OS Diagnostic: {1} {2} {3}"'.format(getlogin(), diagnostic[0],
@@ -180,8 +187,10 @@ def writeCtrlNamelist(x, y, z, afe, a_mlt, mix, final_age = None, n_models = Non
         ctrl.write(' endage(2) = {:.4e}\n\n'.format(final_age))
     
     # format mixture information
+    if mix == 'AGSS09':
+    	mix = 'AG09'
     ctrl.write(' mix  = "{0}"\n'.format(mix.upper()))
-    ctrl.write(' iafe = {:.0f}\n\n'.format(int(afe*10)))
+    ctrl.write(' iafe = {:.0f}\n\n'.format(afe*10.))
     
     # format opacity information
     ctrl.write(' lalex95 = .true.\n')

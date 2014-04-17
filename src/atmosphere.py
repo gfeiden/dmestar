@@ -33,8 +33,8 @@ def select(feh, afe, atm_tau = 10):
     #--- NOTE, add other mixtures later
     # GS98 specific 
     # protect against issues at edge of grid
-    if feh < -0.8:
-        feh = -0.8
+    if feh < -0.3:
+        feh = -0.3
     elif feh > 0.3:
         feh = 0.3
     else:
@@ -42,10 +42,20 @@ def select(feh, afe, atm_tau = 10):
     feh  = round(feh, 1)
     
     # generate atmosphere file names
-    feh_list  = [round(feh + float(x)/10., 1) for x in range(-2, 3)]    
-    phx_files = ["{0}Z{1}{2}d{3}.a{4}{5}d{6}_t010.dat".format(ds.phxnorm, 
+    feh_list  = [round(feh + float(x)/10., 1) for x in range(-2, 3)]
+    if atm_tau == 10:
+        phx_files = ["{0}Z{1}{2}d{3}.a{4}{5}d{6}_t010.dat".format(ds.phxnorm, 
                       plusMinus(x), str(abs(x))[0], str(abs(x))[2], plusMinus(afe), 
                       str(abs(afe))[0], str(abs(afe))[2]) for x in feh_list]
+    elif atm_tau == 100:
+        phx_files = ["{0}Z{1}{2}d{3}.a{4}{5}d{6}_t100.dat".format(ds.phxt100, 
+                      plusMinus(x), str(abs(x))[0], str(abs(x))[2], plusMinus(afe), 
+                      str(abs(afe))[0], str(abs(afe))[2]) for x in feh_list]
+    else:
+        phx_files = ["{0}z_{1}{2}d{3}.afe_{4}{5}d{6}.dat".format(ds.phxteff, 
+                      plusMinus(x), str(abs(x))[0], str(abs(x))[2], plusMinus(afe), 
+                      str(abs(afe))[0], str(abs(afe))[2]) for x in feh_list]
+        
     if len(phx_files) != len(fort_files):
         exit("\nERROR: Length discrepancy in atmosphere selection routine.\n")
     

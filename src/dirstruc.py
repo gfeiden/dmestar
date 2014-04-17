@@ -30,5 +30,5 @@ opal    = opac + 'opal/'
 
 # second level directories
 phxnorm = phx + 'GS98/t010/'
-phxteff = phx + 'GS98/teff/'
+phxteff = phx + 'AGSS09/teff/'
 phxt100 = phx + 'GS98/t100/'

@@ -12,8 +12,8 @@ class Model(object):
     
     def __init__(self, mass, feh, x = 'calc', y = 'calc', z = 'calc', y_prim = 0.248, 
                  afe = 0.0, mixture = 'GS98', a_mlt = 'solar', atm = 'phx', 
-                 n_models = 10000, final_age = 1.0e11, turb_diff = 6.0, 
-                 eos = 'std', nuclear_svals = 'SFII', 
+                 tau_atm = 10, n_models = 10000, final_age = 1.0e11, 
+                 turb_diff = 6.0, eos = 'std', nuclear_svals = 'SFII', 
                  b_field = 'off', b_surf = 0.1, b_pert_age = 0.1, 
                  b_gamma = 2.0, chi_f = '1.0', fc_tach = 0.15, 
                  eq_lambda = 0.0, b_rad_prof = 'dipole', dynamo = 'rot', 
@@ -65,6 +65,9 @@ class Model(object):
                                            'ks'  = Krishna-Swamy
                                            'edd' = Eddington T-tau 
                                            'kur' = Kurucz '99 atmosphere
+            
+            tau_atm      ::    depth at which the atmosphere is to be attached
+                               options --- {0, 10, 100}
             
             n_models     ::    number of model iterations (time steps) to
                                be taken during any given model run. (9000)
@@ -148,6 +151,12 @@ class Model(object):
         self.mix        = str(mixture)
         self.atm        = str(atm)
         
+        # set atmosphere tau based on user input or mixture
+        if self.mix == 'AGSS09':
+            self.tau = 0
+        else:
+            self.tau = tau_atm
+        
         # convective mixing length
         if a_mlt == 'solar':
             from .src import mixture
@@ -204,10 +213,14 @@ class Model(object):
             
         """
         import subprocess as sp
-        sp.call('{0}'.format(ds.mach + 'newpoly'))
-        #sp.call('{0}'.format(ds.binary + 'dmestar'))
-        new_model = sp.Popen('{0}'.format(ds.binary + 'dmestar'))
-        new_model.wait()
+        
+        # create new seed polytrope
+        new_polyt = sp.Popen('{0}'.format(ds.mach + 'newpoly'), 
+                             shell = False) .communicate(input = None)
+        
+        # create new stellar evolution model
+        new_model = sp.Popen('{0}'.format(ds.binary + 'dmestar'), 
+                             shell = False) .communicate(input = None)
         self.cleanup()
         
     def construct(self):
@@ -243,7 +256,7 @@ class Model(object):
             os.remove('./fort.15')
             self.cleanup()
             import sys
-            sys.exit('ERROR: Previous instance of DMESTAR was found and cleaned up.')
+            sys.exit('ERROR: Previous instance of DMESTAR was found and cleaned.')
         except OSError:
             pass
         
@@ -251,7 +264,7 @@ class Model(object):
         if self.afe == 0.0:
             opal95_tab = '{0}hz'.format(self.mix.upper())
         else:
-            pass # EDIT for non-zero alpha/Fe
+            opal95_tab = '{0}hz_OFe{1}'.format(self.mix.upper(), str(self.afe)[1:3])
         
         # DO NOT TOUCH: opacity files
         print '\nLinking Library Files:'
@@ -284,7 +297,10 @@ class Model(object):
                 self.mass*1000., self.mix, atm.plusMinus(self.feh), abs(self.feh)*100.,
                 atm.plusMinus(self.afe), abs(self.afe)*10., self.a_mlt)
         if self.b_field == 'on':
-            fout += 'mag{:02.0f}kG'.format(self.b_surf/100.)
+            if self.b_rad_prof != 'equip':
+                fout += '_mag{:02.0f}kG'.format(self.b_surf/100.)
+            else:
+                fout += '_magL{:04.0f}'.format(self.eq_lambda*10000.)
         
         self.fout = fout
         
@@ -306,6 +322,7 @@ class Model(object):
         if self.b_field == 'on':
             self.link(tmp, '{0}.mag'.format(fout),  'fort.76')
             self.link(tmp, '{0}.menv'.format(fout), 'fort.80')
+                
     
     def link(self, directory, file1, file2):
         """ Generate symbolic link to fortran input file. """
@@ -324,14 +341,13 @@ class Model(object):
         
     def physNamelist(self):
         """ Write the physics namelist """
-        wn.writePhysNamelist(self.mass, self.atm, self.EOS, self.turb_diff,
+        wn.writePhysNamelist(self.mass, self.atm, self.tau, self.EOS, self.turb_diff,
                              self.nuclearS)
         
     def ctrlNamelist(self):
         """ Write the control namelist """
-        wn.writeCtrlNamelist(self.x, self.y, self.z, self.afe, self.a_mlt, 
-                             self.mix, final_age = self.final_age, 
-                             n_models = self.N_models)
+        wn.writeCtrlNamelist(self.x, self.y, self.z, self.afe, self.a_mlt, self.mix,
+                             final_age = self.final_age, n_models = self.N_models)
         
     def magNamelist(self):
         """ Write the magnetic namelist file """
@@ -342,7 +358,10 @@ class Model(object):
         
     def setAtmosphere(self):
         """ Select correct atmosphere files """
-        self.kur_f, self.phx_f = atm.select(self.feh, self.afe)
+        if self.mass > 1.8:
+            self.kur_f, self.phx_f = atm.select(self.feh, self.afe, atm_tau = 0)
+        else:
+            self.kur_f, self.phx_f = atm.select(self.feh, self.afe, atm_tau = self.tau)
     
     def setAbundances(self):
         from .src import mixture
